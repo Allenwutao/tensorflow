@@ -897,7 +897,6 @@ class KerasSequenceAdapter(GeneratorDataAdapter):
     self._size = len(x)
     self._shuffle_sequence = shuffle
     self._keras_sequence = x
-    self._enqueuer = None
     super(KerasSequenceAdapter, self).__init__(
         x,
         shuffle=False,  # Shuffle is handed in the _make_callable override.
@@ -915,11 +914,11 @@ class KerasSequenceAdapter(GeneratorDataAdapter):
                               max_queue_size):
     if workers > 1 or (workers > 0 and use_multiprocessing):
       def generator_fn():
-        self._enqueuer = data_utils.OrderedEnqueuer(
+        enqueuer = data_utils.OrderedEnqueuer(
             x, use_multiprocessing=use_multiprocessing,
             shuffle=self._shuffle_sequence)
-        self._enqueuer.start(workers=workers, max_queue_size=max_queue_size)
-        return self._enqueuer.get()
+        enqueuer.start(workers=workers, max_queue_size=max_queue_size)
+        return enqueuer.get()
     else:
       def generator_fn():
         order = range(len(x))
@@ -940,8 +939,6 @@ class KerasSequenceAdapter(GeneratorDataAdapter):
     return True
 
   def on_epoch_end(self):
-    if self._enqueuer:
-      self._enqueuer.stop()
     self._keras_sequence.on_epoch_end()
 
 
